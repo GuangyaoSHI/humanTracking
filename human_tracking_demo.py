@@ -3,6 +3,21 @@ import pprint
 import numpy as np
 import math
 
+def yaw_distance(yaw1, yaw2):
+    # compute distance from yaw2 to yaw1
+    # - pi <= yaw <= pi
+    assert -np.pi <= yaw1 <= np.pi
+    assert -np.pi <= yaw2 <= np.pi
+    if (yaw1 - yaw2) <= -np.pi:
+        return (yaw1 - yaw2) + 2*np.pi
+    elif (yaw1 - yaw2) >= np.pi:
+        return (yaw1 - yaw2) - 2*np.pi
+    else:
+        return yaw1 - yaw2
+
+
+
+
 client = airsim.MultirotorClient()
 client.confirmConnection()
 client.enableApiControl(True)
@@ -21,7 +36,6 @@ obj_list = client.simListSceneObjects('^(cart|Cart)[\w]*')
 assert len(obj_list) == 1  # making sure there is only one human
 HUMAN_ID = obj_list[0]
 
-
 for i in range(1000):
     humanPosition = client.simGetObjectPose(HUMAN_ID).position
     humanPositionVec = np.array([humanPosition.x_val, humanPosition.y_val, humanPosition.z_val])
@@ -33,15 +47,15 @@ for i in range(1000):
     robotPositionVec = np.array([robotPosition.x_val, robotPosition.y_val, robotPosition.z_val])
     relativePosition = robotPositionVec - humanPositionVec
     assert np.linalg.norm(relativePosition) != 0, 'relative position is a zero vector'
-    unitVec = relativePosition/np.linalg.norm(relativePosition)
-    desiredPosition = humanPositionVec + 3*unitVec
+    unitVec = relativePosition / np.linalg.norm(relativePosition)
+    desiredPosition = humanPositionVec + 3 * unitVec
     if desiredPosition[2] > -1.5:
         desiredPosition[2] = -1.5
     distanceVec = desiredPosition - robotPositionVec
     vx = distanceVec[0]
     vy = distanceVec[1]
     vz = distanceVec[2]
-    yaw_rate = (math.atan2(-unitVec[1], -unitVec[0]) - eulerAngles[2])/np.pi * 180
+    yaw_rate = yaw_distance(math.atan2(-unitVec[1], -unitVec[0]), eulerAngles[2]) / np.pi * 180
     Ts = 0.5
     client.moveByVelocityAsync(vx, vy, vz, Ts,
                                airsim.DrivetrainType.MaxDegreeOfFreedom,
